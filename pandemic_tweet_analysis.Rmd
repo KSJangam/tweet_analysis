@@ -1,0 +1,30 @@
+---
+title: "pandemic_life"
+authors: "Kunal Jangam, Jinwoo Lee"
+date: "4/8/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(topicmodels)
+library(rtweet)
+```
+
+## Scrapping the data
+
+Here we will use the rtweet package to obtain a number of recent tweets that have the keyword "pandemic". We also filter for comments with more than 10 likes to avoid bot responses. 
+
+```{r scraping}
+rt <- search_tweets(
+  q="pandemic", n = 1800, type = "recent", include_rts = FALSE
+)
+
+rt%>%filter(favorite_count>10)%>%select("text", "favorite_count")
+```
+
+## Cleaning the data
+
+
+```{r cleaning}
+```
