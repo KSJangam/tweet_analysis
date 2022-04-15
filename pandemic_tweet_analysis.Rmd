@@ -9,6 +9,11 @@ output: html_document
 library(tidyverse)
 library(topicmodels)
 library(rtweet)
+library(dplyr)
+library(tidytext)
+library(stringr)
+library(tidyr)
+library(textdata)
 ```
 
 ## Scrapping the data
@@ -17,10 +22,25 @@ Here we will use the rtweet package to obtain a number of recent tweets that hav
 
 ```{r scraping}
 rt <- search_tweets(
-  q="pandemic", n = 1800, type = "recent", include_rts = FALSE
+  q="pandemic", n = 10000, type = "recent", include_rts = FALSE
 )
+rt
+rt<-rt%>%filter(favorite_count>10)%>%select("text", "favorite_count")
+tidy_rt <- rt %>% 
+  unnest_tokens(word, text) %>% 
+  anti_join(stop_words)
+tidy_rt %>% 
+  count(word, sort = TRUE)%>%head(10)
 
-rt%>%filter(favorite_count>10)%>%select("text", "favorite_count")
+tidy_rt_bigram <- rt %>% 
+  unnest_tokens(bigram, text, token = "ngrams", n = 2)%>% 
+filter(bigram != "NA")
+tidy_rt_bigram %>%
+  separate(bigram, c("word1", "word2"), sep = " ") %>% 
+  filter(!word1 %in% stop_words$word) %>% 
+  filter(!word2 %in% stop_words$word)%>% 
+  unite(bigram, word1, word2, sep=" ")%>% 
+  count(bigram, sort = TRUE)%>%head(10)
 ```
 
 ## Cleaning the data
