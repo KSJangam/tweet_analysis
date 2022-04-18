@@ -24,27 +24,72 @@ Here we will use the rtweet package to obtain a number of recent tweets that hav
 rt <- search_tweets(
   q="pandemic", n = 10000, type = "recent", include_rts = FALSE
 )
-rt
+rt%>%head()
 rt<-rt%>%filter(favorite_count>10)%>%select("text", "favorite_count")
+```
+
+## Top 10 words
+
+
+```{r topwords}
 tidy_rt <- rt %>% 
   unnest_tokens(word, text) %>% 
+  mutate(word = str_extract(word, "[a-z]+")) %>%
+  filter(!(word=="NA"))%>%
   anti_join(stop_words)
 tidy_rt %>% 
   count(word, sort = TRUE)%>%head(10)
 
+```
+
+
+## Top 10 bigrams
+
+
+```{r topbigrams}
 tidy_rt_bigram <- rt %>% 
   unnest_tokens(bigram, text, token = "ngrams", n = 2)%>% 
 filter(bigram != "NA")
 tidy_rt_bigram %>%
   separate(bigram, c("word1", "word2"), sep = " ") %>% 
+  mutate(word1 = str_extract(word1, "[a-z]+")) %>%
+  mutate(word2 = str_extract(word2, "[a-z]+")) %>%
   filter(!word1 %in% stop_words$word) %>% 
   filter(!word2 %in% stop_words$word)%>% 
+  filter(!(word1=="NA"|word2=="NA"))%>%
   unite(bigram, word1, word2, sep=" ")%>% 
   count(bigram, sort = TRUE)%>%head(10)
 ```
 
-## Cleaning the data
+
+## Top 10 words
 
 
-```{r cleaning}
+```{r topwords}
+nrc_joy <- get_sentiments("nrc") %>% 
+  filter(sentiment == "joy")
+nrc_sad <- get_sentiments("nrc") %>% 
+  filter(sentiment == "sadness")
+nrc_anger <- get_sentiments("nrc") %>% 
+  filter(sentiment == "anger")
+nrc_fear <- get_sentiments("nrc") %>% 
+  filter(sentiment == "fear")
+nrc_trust <- get_sentiments("nrc") %>% 
+  filter(sentiment == "trust")
+tidy_rt %>%
+  inner_join(nrc_joy) %>% 
+  count(word, sort = TRUE)
+tidy_rt %>%
+  inner_join(nrc_sad) %>% 
+  count(word, sort = TRUE)
+tidy_rt %>%
+  inner_join(nrc_anger) %>% 
+  count(word, sort = TRUE)
+tidy_rt %>%
+  inner_join(nrc_fear) %>% 
+  count(word, sort = TRUE)
+tidy_rt %>%
+  inner_join(nrc_trust) %>% 
+  count(word, sort = TRUE)
+
 ```
