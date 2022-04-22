@@ -36,9 +36,7 @@ rt2_other
 ```
 
 ## Top 10 words
-
-
-```{r topwords}
+```{r topwords0}
 
 tidy_rt_other <- rt_other %>% 
   unnest_tokens(word, text) %>% 
@@ -53,12 +51,44 @@ tidy_rt_other %>%
 
 ```
 
+```{r topwords1}
+custom_stop_words <- bind_rows(stop_words,
+                               data_frame(word = union(tm::stopwords("spanish"),tm::stopwords("french") ),
+                                          lexicon = "custom"))
+tidy_rt_other <- rt_other %>% 
+  unnest_tokens(word, text) %>% 
+  mutate(word = str_extract(word, "[a-z]+")) %>%
+  filter(!(word=="NA"))%>%
+  filter(!(word=="da"))%>%
+  anti_join(custom_stop_words)
+
+tidy_rt_other %>% 
+  count(word, sort = TRUE)%>%head(10)
+
+
+
+```
+
+
+```{r topwords2}
+tidy_rt2_other <- rt2_other %>% 
+  unnest_tokens(word, text) %>% 
+  mutate(word = str_extract(word, "[a-z]+")) %>%
+  filter(!(word=="NA"))%>%
+  filter(!(word=="da"))%>%
+  anti_join(custom_stop_words)
+
+tidy_rt2_other %>% 
+  count(word, sort = TRUE)%>%head(10)
+
+
+
+```
 
 ## Top 10 bigrams
 
 
-```{r topbigrams}
-
+```{r topbigrams1}
 tidy_rt_bigram_other <- rt_other %>% 
   unnest_tokens(bigram, text, token = "ngrams", n = 2)%>% 
 filter(bigram != "NA")
@@ -66,18 +96,36 @@ tidy_rt_bigram_other %>%
   separate(bigram, c("word1", "word2"), sep = " ") %>% 
   mutate(word1 = str_extract(word1, "[a-z]+")) %>%
   mutate(word2 = str_extract(word2, "[a-z]+")) %>%
-  filter(!word1 %in% stop_words$word) %>% 
-  filter(!word2 %in% stop_words$word)%>% 
+  filter(!word1 %in% custom_stop_words$word) %>% 
+  filter(!word2 %in% custom_stop_words$word)%>% 
   filter(!(word1=="NA"|word2=="NA"))%>%
   unite(bigram, word1, word2, sep=" ")%>% 
   count(bigram, sort = TRUE)%>%head(30)
 ```
 
 
-## Top 10 words
+```{r topbigrams2}
+
+tidy_rt2_bigram_other <- rt2_other %>% 
+  unnest_tokens(bigram, text, token = "ngrams", n = 2)%>% 
+filter(bigram != "NA")
+tidy_rt2_bigram_other %>%
+  separate(bigram, c("word1", "word2"), sep = " ") %>% 
+  mutate(word1 = str_extract(word1, "[a-z]+")) %>%
+  mutate(word2 = str_extract(word2, "[a-z]+")) %>%
+  filter(!word1 %in% custom_stop_words$word) %>% 
+  filter(!word2 %in% custom_stop_words$word)%>% 
+  filter(!(word1=="NA"|word2=="NA"))%>%
+  filter(!(word1=="da"|word2=="da"))%>%
+  unite(bigram, word1, word2, sep=" ")%>% 
+  count(bigram, sort = TRUE)%>%head(30)
+```
 
 
-```{r topwords}
+## nrc sentiment
+
+
+```{r nrcsenti}
 nrc_joy <- get_sentiments("nrc") %>% 
   filter(sentiment == "joy")
 nrc_sad <- get_sentiments("nrc") %>% 
@@ -107,16 +155,46 @@ tidy_rt_other %>%
   inner_join(nrc_trust) %>% 
   count(word, sort = TRUE)
 ```
-#plot favorite_count against how many positive/negative words in the tweet: bar graph
 
 
+## Plotting sentiment against favorite_count
 
-```{r extra}
-# total sentiment analysis 
-sentiment_res = tidy_rt_other %>% inner_join(get_sentiments("bing"),by ='word') %>% group_by(sentiment) %>% summarize(total = sum(favorite_count))
 
-sentiment_res %>% ggplot(aes(sentiment,total))+
-  geom_bar(stat='identity')
+```{r sentigraphs}
+get_sentiment_total<-function(positive, negative){
+  ret<-c()
+  for(num in 1:length(positive)){
+    pos<-positive[num]
+    neg<-negative[num]
+    if(is.na(pos) && is.na(neg)){
+      ret<-append(ret, 0)
+    }
+    else if(is.na(pos)){
+      ret<-append(ret, -1*neg)
+    }
+    else if (is.na(neg)){
+      ret<-append(ret, pos)
+    }
+    else{
+      ret<-append(ret, pos-neg)
+    }
+  }
+  return(ret)
+}
+sentiment <- tidy_rt_other %>% 
+  inner_join(get_sentiments("bing")) %>% 
+  count(favorite_count, sentiment) %>%
+  pivot_wider(names_from = "sentiment", values_from = "n") %>% 
+  mutate(sentiment = get_sentiment_total(positive, negative))
+ggplot(sentiment, aes(favorite_count, sentiment, fill = sentiment)) + 
+  geom_point() 
 
-# LDA 
+sentiment <- tidy_rt2_other %>% 
+  inner_join(get_sentiments("bing")) %>% 
+  count(favorite_count, sentiment) %>%
+  pivot_wider(names_from = "sentiment", values_from = "n") %>% 
+  mutate(sentiment = get_sentiment_total(positive, negative))
+ggplot(sentiment, aes(favorite_count, sentiment, fill = sentiment)) + 
+  geom_point() 
+
 ```
