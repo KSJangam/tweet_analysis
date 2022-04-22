@@ -1,0 +1,122 @@
+---
+title: "NEW _ covid"
+author: "Jinwoo Lee"
+date: "4/22/2022"
+output: html_document
+---
+
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(topicmodels)
+library(rtweet)
+library(dplyr)
+library(tidytext)
+library(stringr)
+library(tidyr)
+library(textdata)
+library(topicmodels)
+library(tm)
+```
+
+## Scrapping the data
+
+
+```{r scraping}
+
+# For example using covid instead of coronavirus
+
+rt_other <- search_tweets(
+  q="covid", n = 10000, type = "recent", include_rts = FALSE
+)
+rt_other<-rt_other%>%select("text", "favorite_count")
+rt_other%>%arrange(desc(favorite_count)%>%head()
+rt2_other<-rt_other%>%filter(favorite_count>10)
+rt2_other
+```
+
+## Top 10 words
+
+
+```{r topwords}
+
+tidy_rt_other <- rt_other %>% 
+  unnest_tokens(word, text) %>% 
+  mutate(word = str_extract(word, "[a-z]+")) %>%
+  filter(!(word=="NA"))%>%
+  anti_join(stop_words)
+
+tidy_rt_other %>% 
+  count(word, sort = TRUE)%>%head(10)
+
+
+
+```
+
+
+## Top 10 bigrams
+
+
+```{r topbigrams}
+
+tidy_rt_bigram_other <- rt_other %>% 
+  unnest_tokens(bigram, text, token = "ngrams", n = 2)%>% 
+filter(bigram != "NA")
+tidy_rt_bigram_other %>%
+  separate(bigram, c("word1", "word2"), sep = " ") %>% 
+  mutate(word1 = str_extract(word1, "[a-z]+")) %>%
+  mutate(word2 = str_extract(word2, "[a-z]+")) %>%
+  filter(!word1 %in% stop_words$word) %>% 
+  filter(!word2 %in% stop_words$word)%>% 
+  filter(!(word1=="NA"|word2=="NA"))%>%
+  unite(bigram, word1, word2, sep=" ")%>% 
+  count(bigram, sort = TRUE)%>%head(30)
+```
+
+
+## Top 10 words
+
+
+```{r topwords}
+nrc_joy <- get_sentiments("nrc") %>% 
+  filter(sentiment == "joy")
+nrc_sad <- get_sentiments("nrc") %>% 
+  filter(sentiment == "sadness")
+nrc_anger <- get_sentiments("nrc") %>% 
+  filter(sentiment == "anger")
+nrc_fear <- get_sentiments("nrc") %>% 
+  filter(sentiment == "fear")
+nrc_trust <- get_sentiments("nrc") %>% 
+  filter(sentiment == "trust")
+
+
+
+tidy_rt_other %>%
+  inner_join(nrc_joy) %>% 
+  count(word, sort = TRUE)
+tidy_rt_other %>%
+  inner_join(nrc_sad) %>% 
+  count(word, sort = TRUE)
+tidy_rt_other%>%
+  inner_join(nrc_anger) %>% 
+  count(word, sort = TRUE)
+tidy_rt_other %>%
+  inner_join(nrc_fear) %>% 
+  count(word, sort = TRUE)
+tidy_rt_other %>%
+  inner_join(nrc_trust) %>% 
+  count(word, sort = TRUE)
+```
+#plot favorite_count against how many positive/negative words in the tweet: bar graph
+
+
+
+```{r extra}
+# total sentiment analysis 
+sentiment_res = tidy_rt_other %>% inner_join(get_sentiments("bing"),by ='word') %>% group_by(sentiment) %>% summarize(total = sum(favorite_count))
+
+sentiment_res %>% ggplot(aes(sentiment,total))+
+  geom_bar(stat='identity')
+
+# LDA 
+```
