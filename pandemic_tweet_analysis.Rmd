@@ -7,6 +7,7 @@ output: html_document
 
 ```{r setup, include=FALSE}
 library(tidyverse)
+library(tm)
 library(topicmodels)
 library(rtweet)
 library(dplyr)
@@ -14,6 +15,7 @@ library(tidytext)
 library(stringr)
 library(tidyr)
 library(textdata)
+library(textmineR)
 ```
 
 ## Scrapping the data
@@ -25,7 +27,7 @@ rt <- search_tweets(
   q="pandemic", n = 10000, type = "recent", include_rts = FALSE
 )
 rt<-rt%>%select("text", "favorite_count")
-rt%>%arrange(desc(favorite_count)%>%head()
+rt%>%arrange(desc(favorite_count))%>%head()
 rt2<-rt%>%filter(favorite_count>10)
 ```
 
@@ -43,6 +45,17 @@ tidy_rt %>%
 
 ```
 
+
+```{r topwords2}
+tidy_rt2 <- rt2 %>% 
+  unnest_tokens(word, text) %>% 
+  mutate(word = str_extract(word, "[a-z]+")) %>%
+  filter(!(word=="NA"))%>%
+  anti_join(stop_words)
+tidy_rt2 %>% 
+  count(word, sort = TRUE)%>%head(10)
+
+```
 
 ## Top 10 bigrams
 
@@ -63,10 +76,25 @@ tidy_rt_bigram %>%
 ```
 
 
-## Top 10 words
+```{r topbigrams2}
+tidy_rt_bigram <- rt2 %>% 
+  unnest_tokens(bigram, text, token = "ngrams", n = 2)%>% 
+filter(bigram != "NA")
+tidy_rt_bigram %>%
+  separate(bigram, c("word1", "word2"), sep = " ") %>% 
+  mutate(word1 = str_extract(word1, "[a-z]+")) %>%
+  mutate(word2 = str_extract(word2, "[a-z]+")) %>%
+  filter(!word1 %in% stop_words$word) %>% 
+  filter(!word2 %in% stop_words$word)%>% 
+  filter(!(word1=="NA"|word2=="NA"))%>%
+  unite(bigram, word1, word2, sep=" ")%>% 
+  count(bigram, sort = TRUE)%>%head(10)
+```
+
+## Sentiments
 
 
-```{r topwords}
+```{r nrcsenti}
 nrc_joy <- get_sentiments("nrc") %>% 
   filter(sentiment == "joy")
 nrc_sad <- get_sentiments("nrc") %>% 
@@ -94,4 +122,47 @@ tidy_rt %>%
   count(word, sort = TRUE)
 
 ```
-#plot favorite_count against how many positive/negative words in the tweet: bar graph
+
+## Plotting sentiment against favorite_count
+
+
+```{r sentigraphs}
+get_sentiment_total<-function(positive, negative){
+  ret<-c()
+  for(num in 1:length(positive)){
+    pos<-positive[num]
+    neg<-negative[num]
+    if(is.na(pos) && is.na(neg)){
+      ret<-append(ret, 0)
+    }
+    else if(is.na(pos)){
+      ret<-append(ret, -1*neg)
+    }
+    else if (is.na(neg)){
+      ret<-append(ret, pos)
+    }
+    else{
+      ret<-append(ret, pos-neg)
+    }
+  }
+  return(ret)
+}
+sentiment <- tidy_rt %>% 
+  inner_join(get_sentiments("bing")) %>% 
+  count(favorite_count, sentiment) %>%
+  pivot_wider(names_from = "sentiment", values_from = "n") %>% 
+  mutate(sentiment = get_sentiment_total(positive, negative))
+ggplot(sentiment, aes(favorite_count, sentiment, fill = sentiment)) + 
+  geom_point() 
+
+sentiment <- tidy_rt2 %>% 
+  inner_join(get_sentiments("bing")) %>% 
+  count(favorite_count, sentiment) %>%
+  pivot_wider(names_from = "sentiment", values_from = "n") %>% 
+  mutate(sentiment = get_sentiment_total(positive, negative))
+ggplot(sentiment, aes(favorite_count, sentiment, fill = sentiment)) + 
+  geom_point() 
+
+```
+
+
