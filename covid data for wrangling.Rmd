@@ -21,6 +21,7 @@ library(tm)
 
 ## Scrapping the data
 
+Here we will use the rtweet package to obtain a number of recent tweets that have the keyword "covid". We also created another tibble where we filter for comments with more than 10 likes.
 
 ```{r scraping}
 
@@ -36,6 +37,9 @@ rt2_other
 ```
 
 ## Top 10 words
+
+Here we tidy the data and display the top 10 used words.
+
 ```{r topwords0}
 
 tidy_rt_other <- rt_other %>% 
@@ -50,6 +54,8 @@ tidy_rt_other %>%
 
 
 ```
+
+Here we also remove spanish and french stopwords.
 
 ```{r topwords1}
 custom_stop_words <- bind_rows(stop_words,
@@ -69,6 +75,7 @@ tidy_rt_other %>%
 
 ```
 
+Here we do the same for the tibble only including tweets with more than 10 likes
 
 ```{r topwords2}
 tidy_rt2_other <- rt2_other %>% 
@@ -87,6 +94,7 @@ tidy_rt2_other %>%
 
 ## Top 10 bigrams
 
+Here we display the top 10 bigrams.
 
 ```{r topbigrams1}
 tidy_rt_bigram_other <- rt_other %>% 
@@ -102,7 +110,7 @@ tidy_rt_bigram_other %>%
   unite(bigram, word1, word2, sep=" ")%>% 
   count(bigram, sort = TRUE)%>%head(30)
 ```
-
+Here we do the same for the tibble only including tweets with more than 10 likes
 
 ```{r topbigrams2}
 
@@ -124,6 +132,7 @@ tidy_rt2_bigram_other %>%
 
 ## nrc sentiment
 
+Here we do NRC sentiment analysis where we look at the top used words that are categorized into joy, sadness, anger, fear, and trust.
 
 ```{r nrcsenti}
 nrc_joy <- get_sentiments("nrc") %>% 
@@ -141,23 +150,25 @@ nrc_trust <- get_sentiments("nrc") %>%
 
 tidy_rt_other %>%
   inner_join(nrc_joy) %>% 
-  count(word, sort = TRUE)
+  count(word, sort = TRUE)%>%head()
 tidy_rt_other %>%
   inner_join(nrc_sad) %>% 
-  count(word, sort = TRUE)
+  count(word, sort = TRUE)%>%head()
 tidy_rt_other%>%
   inner_join(nrc_anger) %>% 
-  count(word, sort = TRUE)
+  count(word, sort = TRUE)%>%head()
 tidy_rt_other %>%
   inner_join(nrc_fear) %>% 
-  count(word, sort = TRUE)
+  count(word, sort = TRUE)%>%head()
 tidy_rt_other %>%
   inner_join(nrc_trust) %>% 
-  count(word, sort = TRUE)
+  count(word, sort = TRUE)%>%head()
 ```
 
 
 ## Plotting sentiment against favorite_count
+
+Here we plot the total sentiment of the tweet against how many likes it got for both tibbles. We want to see if popular tweets had more a positive or a more negative vibe. This information could be helpful in trying to make a popular tweet. 
 
 
 ```{r sentigraphs}
