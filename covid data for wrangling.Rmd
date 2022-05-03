@@ -147,6 +147,7 @@ tidy_rt2_bigram_other %>%
 Here we do NRC sentiment analysis where we look at the top used words that are categorized into joy, sadness, anger, fear, and trust.
 
 ```{r nrcsenti}
+# get the data from NRC
 nrc_joy <- get_sentiments("nrc") %>% 
   filter(sentiment == "joy")
 nrc_sad <- get_sentiments("nrc") %>% 
@@ -159,7 +160,7 @@ nrc_trust <- get_sentiments("nrc") %>%
   filter(sentiment == "trust")
 
 
-
+# inner join with the each nrc data
 tidy_rt_other %>%
   inner_join(nrc_joy) %>% 
   count(word, sort = TRUE)%>%head()
@@ -204,6 +205,7 @@ get_sentiment_total<-function(positive, negative){
   }
   return(ret)
 }
+# The sentiment tends to be negative when have higher faviorte counts (from pandemic search)
 sentiment <- tidy_rt_other %>% 
   inner_join(get_sentiments("bing")) %>% 
   count(favorite_count, sentiment) %>%
@@ -211,7 +213,8 @@ sentiment <- tidy_rt_other %>%
   mutate(sentiment = get_sentiment_total(positive, negative))
 ggplot(sentiment, aes(favorite_count, sentiment, fill = sentiment)) + 
   geom_point() 
-
+  
+# The sentiment tends to be negative when have higher faviorte counts (from covid search)
 sentiment <- tidy_rt2_other %>% 
   inner_join(get_sentiments("bing")) %>% 
   count(favorite_count, sentiment) %>%
