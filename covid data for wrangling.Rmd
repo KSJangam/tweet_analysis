@@ -19,9 +19,13 @@ library(topicmodels)
 library(tm)
 ```
 
+## Project Goals
+
+The goal of our project is to see what people are saying about the pandemic in current times. We want to see if people are still being careful or if they have started treating the pandemic as a part of everyday life. We also want to explore using twitter data. 
+
 ## Scrapping the data
 
-Here we will use the rtweet package to obtain a number of recent tweets that have the keyword "covid". We also created another tibble where we filter for comments with more than 10 likes.
+Here we will use the rtweet package to obtain a number of recent tweets that have the keyword "covid". We query the most recent tweets. We also created another tibble where we filter for comments with more than 10 likes.
 
 ```{r scraping}
 
@@ -35,6 +39,14 @@ rt_other%>%arrange(desc(favorite_count))%>%head()
 rt2_other<-rt_other%>%filter(favorite_count>10)
 rt2_other
 ```
+
+Here we write the data to a csv.
+
+```{r writing}
+write.csv(rt_other, 'covid_tweets.csv')
+```
+
+
 
 ## Top 10 words
 
