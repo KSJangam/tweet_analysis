@@ -171,3 +171,49 @@ ggplot(sentiment, aes(favorite_count, sentiment, fill = sentiment)) +
 ```
 
 
+```{r extra}
+# total sentiment analysis 
+sentiment_res = tidy_rt %>% inner_join(get_sentiments("bing"),by ='word') 
+ 
+sentiment_res %>% ggplot(aes(sentiment,n))+
+  geom_bar(stat='identity')
+
+
+
+get_sentiment_total<-function(positive, negative){
+  ret<-c()
+  for(num in 1:length(positive)){
+    pos<-positive[num]
+    neg<-negative[num]
+    if(is.na(pos) && is.na(neg)){
+      ret<-append(ret, 0)
+    }
+    else if(is.na(pos)){
+      ret<-append(ret, -1*neg)
+    }
+    else if (is.na(neg)){
+      ret<-append(ret, pos)
+    }
+    else{
+      ret<-append(ret, pos-neg)
+    }
+  }
+  return(ret)
+}
+
+tidy_rt%>%head()
+
+
+sentiment <- tidy_rt %>% 
+  inner_join(get_sentiments("bing")) %>% 
+  count(favorite_count, sentiment) %>%
+  pivot_wider(names_from = "sentiment", values_from = "n") %>% 
+  mutate(sentiment = get_sentiment_total(positive, negative))
+
+sentiment %>% filter(favorite_count >10)%>%head
+
+ 
+
+
+```
+

@@ -216,7 +216,7 @@ ggplot(sentiment, aes(favorite_count, sentiment, fill = sentiment)) +
 # total sentiment analysis 
 sentiment_res = tidy_rt_other %>% inner_join(get_sentiments("bing"),by ='word') 
  
-sentiment_res %>% ggplot(aes(sentiment,total))+
+sentiment_res %>% ggplot(aes(sentiment,n))+
   geom_bar(stat='identity')
 
 
@@ -242,7 +242,7 @@ get_sentiment_total<-function(positive, negative){
   return(ret)
 }
 
-tidy_rt_other
+tidy_rt_other%>%head()
 
 
 sentiment <- tidy_rt_other %>% 
@@ -251,7 +251,7 @@ sentiment <- tidy_rt_other %>%
   pivot_wider(names_from = "sentiment", values_from = "n") %>% 
   mutate(sentiment = get_sentiment_total(positive, negative))
 
-sentiment %>% filter(favorite_count >10)
+sentiment %>% filter(favorite_count >10)%>%head
 
  
 
