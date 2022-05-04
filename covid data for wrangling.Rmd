@@ -185,6 +185,7 @@ Here we plot the total sentiment of the tweet against how many likes it got for 
 
 
 ```{r sentigraphs}
+# this function calculate the total sentiment summing all positive and negative
 get_sentiment_total<-function(positive, negative){
   ret<-c()
   for(num in 1:length(positive)){
