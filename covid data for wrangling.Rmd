@@ -1,6 +1,6 @@
 ---
-title: "NEW _ covid"
-author: "Jinwoo Lee"
+title: "Covid Tweet Analysis"
+author: "Jinwoo Lee, Kunal Jangam"
 date: "4/22/2022"
 output: html_document
 ---
@@ -206,7 +206,7 @@ get_sentiment_total<-function(positive, negative){
   }
   return(ret)
 }
-# The sentiment tends to be negative when have higher faviorte counts (from pandemic search)
+# The sentiment tends to be negative when have higher favorite counts (from pandemic search)
 sentiment <- tidy_rt_other %>% 
   inner_join(get_sentiments("bing")) %>% 
   count(favorite_count, sentiment) %>%
@@ -215,7 +215,7 @@ sentiment <- tidy_rt_other %>%
 ggplot(sentiment, aes(favorite_count, sentiment, fill = sentiment)) + 
   geom_point() 
   
-# The sentiment tends to be negative when have higher faviorte counts (from covid search)
+# The sentiment tends to be negative when have higher favorite counts (from covid search)
 sentiment <- tidy_rt2_other %>% 
   inner_join(get_sentiments("bing")) %>% 
   count(favorite_count, sentiment) %>%

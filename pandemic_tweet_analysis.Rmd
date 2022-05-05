@@ -1,5 +1,5 @@
 ---
-title: "pandemic_life"
+title: "Pandemic Tweet Analysis"
 authors: "Kunal Jangam, Jinwoo Lee"
 date: "4/8/2022"
 output: html_document
@@ -22,7 +22,7 @@ library(textmineR)
 
 The goal of our project is to see what people are saying about the pandemic in current times. We want to see if people are still being careful or if they have started treating the pandemic as a part of everyday life. We also want to explore using twitter data. 
 
-## Scrapping the data
+## Scraping the data
 
 Here we will use the rtweet package to obtain a number of recent tweets that have the keyword "pandemic". We query the most recent tweets. We also created another tibble where we filter for comments with more than 10 likes.
 
@@ -41,6 +41,7 @@ Here we write the data to a csv.
 write.csv(rt, 'pandemic_tweets.csv')
 ```
 
+
 ## Top 10 words
 
 Here we tidy the data and display the top 10 used words.
@@ -55,6 +56,7 @@ tidy_rt %>%
   count(word, sort = TRUE)%>%head(10)
 
 ```
+
 
 Here we do the same for the tibble only including tweets with more than 10 likes
 
@@ -180,50 +182,4 @@ ggplot(sentiment, aes(favorite_count, sentiment, fill = sentiment)) +
 
 ```
 
-
-```{r extra}
-# total sentiment analysis 
-sentiment_res = tidy_rt %>% inner_join(get_sentiments("bing"),by ='word') 
- 
-sentiment_res %>% ggplot(aes(sentiment,n))+
-  geom_bar(stat='identity')
-
-
-
-get_sentiment_total<-function(positive, negative){
-  ret<-c()
-  for(num in 1:length(positive)){
-    pos<-positive[num]
-    neg<-negative[num]
-    if(is.na(pos) && is.na(neg)){
-      ret<-append(ret, 0)
-    }
-    else if(is.na(pos)){
-      ret<-append(ret, -1*neg)
-    }
-    else if (is.na(neg)){
-      ret<-append(ret, pos)
-    }
-    else{
-      ret<-append(ret, pos-neg)
-    }
-  }
-  return(ret)
-}
-
-tidy_rt%>%head()
-
-
-sentiment <- tidy_rt %>% 
-  inner_join(get_sentiments("bing")) %>% 
-  count(favorite_count, sentiment) %>%
-  pivot_wider(names_from = "sentiment", values_from = "n") %>% 
-  mutate(sentiment = get_sentiment_total(positive, negative))
-
-sentiment %>% filter(favorite_count >10)%>%head
-
- 
-
-
-```
 
