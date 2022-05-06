@@ -1,0 +1,390 @@
+---
+title: "Pandemic and Covid Tweet Analysis"
+author: "Kunal Jangam, Jinwoo Lee"
+date: "5/5/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(tm)
+library(topicmodels)
+library(rtweet)
+library(dplyr)
+library(tidytext)
+library(stringr)
+library(tidyr)
+library(textdata)
+library(textmineR)
+```
+
+## Project Goals
+
+The goal of our project is to see what people are saying about the pandemic and covid in current times. We want to see if people are still being careful or if they have started treating the pandemic as a part of everyday life. We also want to explore using twitter data. This file is a combination of the covid tweet data and pandemic tweet data analysis and will be used to generate our report. 
+
+
+## Scraping the data - pandemic tweets
+
+Here we will use the rtweet package to obtain a number of recent tweets that have the keyword "pandemic". We query the most recent tweets. We also created another tibble where we filter for comments with more than 10 likes.
+
+```{r scrapingPandemic}
+rt <- search_tweets(
+  q="pandemic", n = 10000, type = "recent", include_rts = FALSE
+)
+rt<-rt%>%select("text", "favorite_count")
+rt%>%arrange(desc(favorite_count))%>%head()
+rt2<-rt%>%filter(favorite_count>10)
+```
+
+Here we write the pandemic data to a csv.
+
+```{r writingPandemic}
+write.csv(rt, 'pandemic_tweets.csv')
+```
+
+
+## Top 10 words - pandemic tweets
+
+Here we tidy the pandemic data and display the top 10 used words.
+
+```{r topwordsPandemic}
+tidy_rt <- rt %>% 
+  unnest_tokens(word, text) %>% 
+  mutate(word = str_extract(word, "[a-z]+")) %>%
+  filter(!(word=="NA"))%>%
+  anti_join(stop_words)
+tidy_rt %>% 
+  count(word, sort = TRUE)%>%head(10)
+
+```
+
+
+Here we do the same for the tibble only including pandemic tweets with more than 10 likes
+
+```{r topwords2Pandemic}
+tidy_rt2 <- rt2 %>% 
+  unnest_tokens(word, text) %>% 
+  mutate(word = str_extract(word, "[a-z]+")) %>%
+  filter(!(word=="NA"))%>%
+  anti_join(stop_words)
+tidy_rt2 %>% 
+  count(word, sort = TRUE)%>%head(10)
+
+```
+
+## Top 10 bigrams - pandemic tweets
+
+Here we display the top 10 bigrams.
+
+```{r topbigramsPandemic}
+tidy_rt_bigram <- rt %>% 
+  unnest_tokens(bigram, text, token = "ngrams", n = 2)%>% 
+filter(bigram != "NA")
+tidy_rt_bigram %>%
+  separate(bigram, c("word1", "word2"), sep = " ") %>% 
+  mutate(word1 = str_extract(word1, "[a-z]+")) %>%
+  mutate(word2 = str_extract(word2, "[a-z]+")) %>%
+  filter(!word1 %in% stop_words$word) %>% 
+  filter(!word2 %in% stop_words$word)%>% 
+  filter(!(word1=="NA"|word2=="NA"))%>%
+  unite(bigram, word1, word2, sep=" ")%>% 
+  count(bigram, sort = TRUE)%>%head(10)
+```
+
+Here we do the same for the tibble only including tweets with more than 10 likes
+
+```{r topbigrams2Pandemic}
+tidy_rt_bigram <- rt2 %>% 
+  unnest_tokens(bigram, text, token = "ngrams", n = 2)%>% 
+filter(bigram != "NA")
+tidy_rt_bigram %>%
+  separate(bigram, c("word1", "word2"), sep = " ") %>% 
+  mutate(word1 = str_extract(word1, "[a-z]+")) %>%
+  mutate(word2 = str_extract(word2, "[a-z]+")) %>%
+  filter(!word1 %in% stop_words$word) %>% 
+  filter(!word2 %in% stop_words$word)%>% 
+  filter(!(word1=="NA"|word2=="NA"))%>%
+  unite(bigram, word1, word2, sep=" ")%>% 
+  count(bigram, sort = TRUE)%>%head(10)
+```
+
+## Sentiments - pandemic tweets
+
+Here we do NRC sentiment analysis where we look at the top used words that are categorized into joy, sadness, anger, fear, and trust.
+
+```{r nrcsentiPandemic}
+nrc_joy <- get_sentiments("nrc") %>% 
+  filter(sentiment == "joy")
+nrc_sad <- get_sentiments("nrc") %>% 
+  filter(sentiment == "sadness")
+nrc_anger <- get_sentiments("nrc") %>% 
+  filter(sentiment == "anger")
+nrc_fear <- get_sentiments("nrc") %>% 
+  filter(sentiment == "fear")
+nrc_trust <- get_sentiments("nrc") %>% 
+  filter(sentiment == "trust")
+tidy_rt %>%
+  inner_join(nrc_joy) %>% 
+  count(word, sort = TRUE)%>%head()
+tidy_rt %>%
+  inner_join(nrc_sad) %>% 
+  count(word, sort = TRUE)%>%head()
+tidy_rt %>%
+  inner_join(nrc_anger) %>% 
+  count(word, sort = TRUE)%>%head()
+tidy_rt %>%
+  inner_join(nrc_fear) %>% 
+  count(word, sort = TRUE)%>%head()
+tidy_rt %>%
+  inner_join(nrc_trust) %>% 
+  count(word, sort = TRUE)%>%head()
+
+```
+
+## Plotting sentiment against favorite_count - pandemic tweets
+
+Here we plot the total sentiment of the tweet against how many likes it got for both tibbles. We want to see if popular tweets had more a positive or a more negative vibe. This information could be helpful in trying to make a popular tweet. 
+
+```{r sentigraphsPandemic}
+get_sentiment_total<-function(positive, negative){
+  ret<-c()
+  for(num in 1:length(positive)){
+    pos<-positive[num]
+    neg<-negative[num]
+    if(is.na(pos) && is.na(neg)){
+      ret<-append(ret, 0)
+    }
+    else if(is.na(pos)){
+      ret<-append(ret, -1*neg)
+    }
+    else if (is.na(neg)){
+      ret<-append(ret, pos)
+    }
+    else{
+      ret<-append(ret, pos-neg)
+    }
+  }
+  return(ret)
+}
+sentiment <- tidy_rt %>% 
+  inner_join(get_sentiments("bing")) %>% 
+  count(favorite_count, sentiment) %>%
+  pivot_wider(names_from = "sentiment", values_from = "n") %>% 
+  mutate(sentiment = get_sentiment_total(positive, negative))
+ggplot(sentiment, aes(favorite_count, sentiment, fill = sentiment)) + 
+  geom_point() 
+
+sentiment <- tidy_rt2 %>% 
+  inner_join(get_sentiments("bing")) %>% 
+  count(favorite_count, sentiment) %>%
+  pivot_wider(names_from = "sentiment", values_from = "n") %>% 
+  mutate(sentiment = get_sentiment_total(positive, negative))
+ggplot(sentiment, aes(favorite_count, sentiment, fill = sentiment)) + 
+  geom_point() 
+
+```
+
+
+## Scrapping the data - covid tweets
+
+Here we will use the rtweet package to obtain a number of recent tweets that have the keyword "covid". We query the most recent tweets. We also created another tibble where we filter for comments with more than 10 likes.
+
+```{r scrapingCovid}
+
+# For example using covid instead of coronavirus
+
+rt_other <- search_tweets(
+  q="covid", n = 10000, type = "recent", include_rts = FALSE
+)
+rt_other<-rt_other%>%select("text", "favorite_count")
+rt_other%>%arrange(desc(favorite_count))%>%head()
+rt2_other<-rt_other%>%filter(favorite_count>10)
+```
+
+Here we write the data to a csv. 
+
+```{r writingCovid}
+write.csv(rt_other, 'covid_tweets.csv')
+```
+
+
+
+## Top 10 words - covid tweets
+
+Here we tidy the data and display the top 10 used words.
+
+```{r topwords0Covid}
+
+tidy_rt_other <- rt_other %>% 
+  unnest_tokens(word, text) %>% 
+  mutate(word = str_extract(word, "[a-z]+")) %>%
+  filter(!(word=="NA"))%>%
+  anti_join(stop_words)
+
+tidy_rt_other %>% 
+  count(word, sort = TRUE)%>%head(10)
+
+
+
+```
+
+Here we also remove spanish and french stopwords.
+
+```{r topwords1Covid}
+custom_stop_words <- bind_rows(stop_words,
+                               data_frame(word = union(tm::stopwords("spanish"),tm::stopwords("french") ),
+                                          lexicon = "custom"))
+tidy_rt_other <- rt_other %>% 
+  unnest_tokens(word, text) %>% 
+  mutate(word = str_extract(word, "[a-z]+")) %>%
+  filter(!(word=="NA"))%>%
+  filter(!(word=="da"))%>%
+  anti_join(custom_stop_words)
+
+tidy_rt_other %>% 
+  count(word, sort = TRUE)%>%head(10)
+
+
+
+```
+
+Here we do the same for the tibble only including tweets with more than 10 likes
+
+```{r topwords2Covid}
+tidy_rt2_other <- rt2_other %>% 
+  unnest_tokens(word, text) %>% 
+  mutate(word = str_extract(word, "[a-z]+")) %>%
+  filter(!(word=="NA"))%>%
+  filter(!(word=="da"))%>%
+  anti_join(custom_stop_words)
+
+tidy_rt2_other %>% 
+  count(word, sort = TRUE)%>%head(10)
+
+
+
+```
+
+## Top 10 bigrams - covid tweets
+
+Here we display the top 10 bigrams.
+
+```{r topbigrams1Covid}
+tidy_rt_bigram_other <- rt_other %>% 
+  unnest_tokens(bigram, text, token = "ngrams", n = 2)%>% 
+filter(bigram != "NA")
+tidy_rt_bigram_other %>%
+  separate(bigram, c("word1", "word2"), sep = " ") %>% 
+  mutate(word1 = str_extract(word1, "[a-z]+")) %>%
+  mutate(word2 = str_extract(word2, "[a-z]+")) %>%
+  filter(!word1 %in% custom_stop_words$word) %>% 
+  filter(!word2 %in% custom_stop_words$word)%>% 
+  filter(!(word1=="NA"|word2=="NA"))%>%
+  unite(bigram, word1, word2, sep=" ")%>% 
+  count(bigram, sort = TRUE)%>%head(10)
+```
+
+Here we do the same for the tibble only including tweets with more than 10 likes
+
+```{r topbigrams2Covid}
+
+tidy_rt2_bigram_other <- rt2_other %>% 
+  unnest_tokens(bigram, text, token = "ngrams", n = 2)%>% 
+filter(bigram != "NA")
+tidy_rt2_bigram_other %>%
+  separate(bigram, c("word1", "word2"), sep = " ") %>% 
+  mutate(word1 = str_extract(word1, "[a-z]+")) %>%
+  mutate(word2 = str_extract(word2, "[a-z]+")) %>%
+  filter(!word1 %in% custom_stop_words$word) %>% 
+  filter(!word2 %in% custom_stop_words$word)%>% 
+  filter(!(word1=="NA"|word2=="NA"))%>%
+  filter(!(word1=="da"|word2=="da"))%>%
+  unite(bigram, word1, word2, sep=" ")%>% 
+  count(bigram, sort = TRUE)%>%head(10)
+```
+
+
+## nrc sentiment - covid tweets
+
+Here we do NRC sentiment analysis where we look at the top used words that are categorized into joy, sadness, anger, fear, and trust.
+
+```{r nrcsentiCovid}
+# get the data from NRC
+nrc_joy <- get_sentiments("nrc") %>% 
+  filter(sentiment == "joy")
+nrc_sad <- get_sentiments("nrc") %>% 
+  filter(sentiment == "sadness")
+nrc_anger <- get_sentiments("nrc") %>% 
+  filter(sentiment == "anger")
+nrc_fear <- get_sentiments("nrc") %>% 
+  filter(sentiment == "fear")
+nrc_trust <- get_sentiments("nrc") %>% 
+  filter(sentiment == "trust")
+
+
+# inner join with the each nrc data
+tidy_rt_other %>%
+  inner_join(nrc_joy) %>% 
+  count(word, sort = TRUE)%>%head()
+tidy_rt_other %>%
+  inner_join(nrc_sad) %>% 
+  count(word, sort = TRUE)%>%head()
+tidy_rt_other%>%
+  inner_join(nrc_anger) %>% 
+  count(word, sort = TRUE)%>%head()
+tidy_rt_other %>%
+  inner_join(nrc_fear) %>% 
+  count(word, sort = TRUE)%>%head()
+tidy_rt_other %>%
+  inner_join(nrc_trust) %>% 
+  count(word, sort = TRUE)%>%head()
+```
+
+
+## Plotting sentiment against favorite_count - covid tweets
+
+Here we plot the total sentiment of the tweet against how many likes it got for both tibbles. We want to see if popular tweets had more a positive or a more negative vibe. This information could be helpful in trying to make a popular tweet. 
+
+
+```{r sentigraphsCovid}
+# this function calculate the total sentiment summing all positive and negative
+get_sentiment_total<-function(positive, negative){
+  ret<-c()
+  for(num in 1:length(positive)){
+    pos<-positive[num]
+    neg<-negative[num]
+    if(is.na(pos) && is.na(neg)){
+      ret<-append(ret, 0)
+    }
+    else if(is.na(pos)){
+      ret<-append(ret, -1*neg)
+    }
+    else if (is.na(neg)){
+      ret<-append(ret, pos)
+    }
+    else{
+      ret<-append(ret, pos-neg)
+    }
+  }
+  return(ret)
+}
+# The sentiment tends to be negative when have higher favorite counts (from pandemic search)
+sentiment <- tidy_rt_other %>% 
+  inner_join(get_sentiments("bing")) %>% 
+  count(favorite_count, sentiment) %>%
+  pivot_wider(names_from = "sentiment", values_from = "n") %>% 
+  mutate(sentiment = get_sentiment_total(positive, negative))
+ggplot(sentiment, aes(favorite_count, sentiment, fill = sentiment)) + 
+  geom_point() 
+  
+# The sentiment tends to be negative when have higher favorite counts (from covid search)
+sentiment <- tidy_rt2_other %>% 
+  inner_join(get_sentiments("bing")) %>% 
+  count(favorite_count, sentiment) %>%
+  pivot_wider(names_from = "sentiment", values_from = "n") %>% 
+  mutate(sentiment = get_sentiment_total(positive, negative))
+ggplot(sentiment, aes(favorite_count, sentiment, fill = sentiment)) + 
+  geom_point() 
+
+```
+
